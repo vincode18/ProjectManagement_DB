@@ -13,7 +13,7 @@ export interface Project {
   id: string;
   code: string;
   name: string;
-  description?: string;
+  description?: string | null;
   managerId: string;
   ownerId: string;
   techLeadId?: string | null;

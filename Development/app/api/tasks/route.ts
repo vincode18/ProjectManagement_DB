@@ -16,5 +16,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid task payload' }, { status: 400 });
   }
 
-  return NextResponse.json(createTask(parsed.data), { status: 201 });
+  return NextResponse.json(await createTask(parsed.data), { status: 201 });
 }

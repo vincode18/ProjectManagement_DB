@@ -10,7 +10,7 @@ const config: Config = {
         border: 'var(--border)',
         ink: 'var(--ink)',
         muted: 'var(--muted)',
-        primary: 'var(--primary)',
+        primary: 'rgb(var(--primary) / <alpha-value>)',
         sidebar: 'var(--sidebar)',
         status: {
           not_started: '#64748B',

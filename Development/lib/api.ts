@@ -1,7 +1,8 @@
-import { mockData } from './mock-data';
+import { prisma } from './prisma';
 import { calculateHealth, calculateOverallProgress } from './health';
 import { formatDate, STATUS_ORDER } from './date';
-import type { Project, Task, User } from './types';
+import type { Project, Task, User, TaskDependency } from './types';
+import type { Project as PrismaProject, Task as PrismaTask, User as PrismaUser } from '@prisma/client';
 
 export type ComputedProject = Project & {
   owner: User | null;
@@ -12,57 +13,127 @@ export type ComputedProject = Project & {
   overallProgress: number;
 };
 
-export function withComputedProject(project: Project): ComputedProject {
-  const tasks = mockData.tasks.filter((task) => task.projectId === project.id);
+function toUser(user: PrismaUser | null | undefined): User | null {
+  if (!user) return null;
+  return { id: user.id, name: user.name, email: user.email, role: user.role };
+}
+
+export function toTask(task: PrismaTask): Task {
   return {
-    ...project,
-    owner: mockData.users.find((user) => user.id === project.ownerId) ?? null,
-    manager: mockData.users.find((user) => user.id === project.managerId) ?? null,
-    techLead: mockData.users.find((user) => user.id === project.techLeadId) ?? null,
-    tasks,
-    health: calculateHealth(project, tasks),
-    overallProgress: calculateOverallProgress(tasks, project.progress)
+    id: task.id,
+    projectId: task.projectId,
+    parentTaskId: task.parentTaskId,
+    wbsCode: task.wbsCode,
+    name: task.name,
+    assigneeId: task.assigneeId,
+    startDate: task.startDate.toISOString(),
+    endDate: task.endDate.toISOString(),
+    progress: task.progress,
+    status: task.status,
+    priority: task.priority,
+    isMilestone: task.isMilestone,
+    remarks: task.remarks,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString()
   };
 }
 
-export function getProjectsFiltered(filters: { status?: string; priority?: string; search?: string } = {}): ComputedProject[] {
-  const search = filters.search?.trim().toLowerCase();
-  return mockData.projects
-    .filter((project) => {
-      if (filters.status && project.status !== filters.status) return false;
-      if (filters.priority && project.priority !== filters.priority) return false;
-      if (!search) return true;
-      return project.name.toLowerCase().includes(search) || project.code.toLowerCase().includes(search);
-    })
-    .map(withComputedProject)
-    .sort((a, b) => a.name.localeCompare(b.name));
+export function toProject(project: PrismaProject): Project {
+  return {
+    id: project.id,
+    code: project.code,
+    name: project.name,
+    description: project.description ?? undefined,
+    managerId: project.managerId,
+    ownerId: project.ownerId,
+    techLeadId: project.techLeadId,
+    startDate: project.startDate.toISOString(),
+    endDate: project.endDate.toISOString(),
+    actualEndDate: project.actualEndDate ? project.actualEndDate.toISOString() : null,
+    status: project.status,
+    priority: project.priority,
+    progress: project.progress,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString()
+  };
 }
 
-export function getProjectDetail(id: string): ComputedProject | null {
-  const project = mockData.projects.find((item) => item.id === id) ?? null;
+type ProjectWithRelations = PrismaProject & {
+  manager?: PrismaUser | null;
+  owner?: PrismaUser | null;
+  techLead?: PrismaUser | null;
+  tasks?: PrismaTask[];
+};
+
+const projectInclude = {
+  manager: true,
+  owner: true,
+  techLead: true,
+  tasks: true
+} as const;
+
+export function withComputedProject(project: ProjectWithRelations): ComputedProject {
+  const tasks = (project.tasks ?? []).map(toTask);
+  const baseProject = toProject(project);
+  return {
+    ...baseProject,
+    owner: toUser(project.owner),
+    manager: toUser(project.manager),
+    techLead: toUser(project.techLead),
+    tasks,
+    health: calculateHealth(baseProject, tasks),
+    overallProgress: calculateOverallProgress(tasks, baseProject.progress)
+  };
+}
+
+export async function getProjectsFiltered(filters: { status?: string; priority?: string; search?: string } = {}): Promise<ComputedProject[]> {
+  const search = filters.search?.trim();
+  const projects = await prisma.project.findMany({
+    where: {
+      status: filters.status ? (filters.status as Project['status']) : undefined,
+      priority: filters.priority ? (filters.priority as Project['priority']) : undefined,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { code: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        : {})
+    },
+    include: projectInclude,
+    orderBy: { name: 'asc' }
+  });
+  return projects.map(withComputedProject);
+}
+
+export async function getProjectDetail(id: string): Promise<ComputedProject | null> {
+  const project = await prisma.project.findUnique({ where: { id }, include: projectInclude });
   if (!project) return null;
   return withComputedProject(project);
 }
 
-export function getTasksByProject(projectId: string) {
-  return mockData.tasks
-    .filter((task) => task.projectId === projectId)
-    .sort((a, b) => a.wbsCode.localeCompare(b.wbsCode));
+export async function getTasksByProject(projectId: string) {
+  const tasks = await prisma.task.findMany({ where: { projectId }, orderBy: { wbsCode: 'asc' } });
+  return tasks.map(toTask);
 }
 
-export function getUpcomingMilestones() {
-  return mockData.tasks
-    .filter((task) => task.isMilestone)
-    .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime())
-    .slice(0, 4)
-    .map((task) => ({
-      ...task,
-      project: mockData.projects.find((project) => project.id === task.projectId) ?? null
-    }));
+export async function getUpcomingMilestones() {
+  const tasks = await prisma.task.findMany({
+    where: { isMilestone: true },
+    orderBy: { endDate: 'asc' },
+    take: 4,
+    include: { project: true }
+  });
+  return tasks.map((task) => ({
+    ...toTask(task),
+    project: task.project ? toProject(task.project) : null
+  }));
 }
 
-export function getDashboardSummary() {
-  const projects = mockData.projects.map(withComputedProject);
+export async function getDashboardSummary() {
+  const rawProjects = await prisma.project.findMany({ include: projectInclude });
+  const projects = rawProjects.map(withComputedProject);
   const today = new Date();
   const upcoming = projects.filter((project) => new Date(project.startDate) > today).length;
 
@@ -82,8 +153,78 @@ export function getDashboardSummary() {
     upcoming,
     overallProgress: Math.round(projects.reduce((sum, project) => sum + project.overallProgress, 0) / Math.max(1, projects.length)),
     statusCounts,
-    upcomingMilestones: getUpcomingMilestones(),
+    upcomingMilestones: await getUpcomingMilestones(),
     riskProjects: projects.slice(0, 6)
+  };
+}
+
+export async function getUsers(): Promise<User[]> {
+  const users = await prisma.user.findMany({ orderBy: { name: 'asc' } });
+  return users.map((user) => ({ id: user.id, name: user.name, email: user.email, role: user.role }));
+}
+
+export async function getDependenciesForProject(projectId: string): Promise<TaskDependency[]> {
+  const dependencies = await prisma.taskDependency.findMany({
+    where: { task: { projectId } }
+  });
+  return dependencies.map((dependency) => ({
+    taskId: dependency.taskId,
+    dependsOnTaskId: dependency.dependsOnTaskId,
+    type: dependency.type
+  }));
+}
+
+export async function getAllProjectsRaw(): Promise<Project[]> {
+  const projects = await prisma.project.findMany({ orderBy: { name: 'asc' } });
+  return projects.map(toProject);
+}
+
+export async function getAllTasksRaw(): Promise<Task[]> {
+  const tasks = await prisma.task.findMany({ orderBy: { wbsCode: 'asc' } });
+  return tasks.map(toTask);
+}
+
+export async function getKanbanColumns(): Promise<Record<string, string>> {
+  const configs = await prisma.kanbanColumnConfig.findMany();
+  const map: Record<string, string> = {};
+  for (const status of STATUS_ORDER) {
+    map[status] = status.replaceAll('_', ' ');
+  }
+  for (const config of configs) {
+    map[config.status] = config.label;
+  }
+  return map;
+}
+
+export async function getPlannerData(dateIso: string) {
+  const start = new Date(`${dateIso}T00:00:00.000Z`);
+  const end = new Date(`${dateIso}T23:59:59.999Z`);
+  const [slots, tasks] = await Promise.all([
+    prisma.plannerSlot.findMany({ where: { date: { gte: start, lte: end } } }),
+    prisma.task.findMany()
+  ]);
+  const taskMap = new Map(tasks.map((task) => [task.id, toTask(task)]));
+  return {
+    slots: slots.map((slot) => ({ id: slot.id, userId: slot.userId, taskId: slot.taskId, date: slot.date.toISOString(), hour: slot.hour })),
+    taskMap
+  };
+}
+
+export async function getPlannerForUser(userId: string, dateIso: string) {
+  const start = new Date(`${dateIso}T00:00:00.000Z`);
+  const end = new Date(`${dateIso}T23:59:59.999Z`);
+  const [slots, inboxTasks, userTasks] = await Promise.all([
+    prisma.plannerSlot.findMany({ where: { userId, date: { gte: start, lte: end } } }),
+    prisma.task.findMany({ where: { assigneeId: userId, status: { not: 'completed' } }, orderBy: { wbsCode: 'asc' } }),
+    prisma.task.findMany({ where: { assigneeId: userId }, orderBy: { wbsCode: 'asc' } })
+  ]);
+  const taskMap = new Map(userTasks.map((task) => [task.id, toTask(task)]));
+  const assignedTaskIds = new Set(slots.map((slot) => slot.taskId));
+  return {
+    slots: slots.map((slot) => ({ id: slot.id, userId: slot.userId, taskId: slot.taskId, date: slot.date.toISOString(), hour: slot.hour })),
+    inbox: inboxTasks.map(toTask).filter((task) => !assignedTaskIds.has(task.id)),
+    userTasks: userTasks.map(toTask),
+    taskMap
   };
 }
 
@@ -108,9 +249,10 @@ export function buildCalendarWeeks(month: Date) {
   return weeks.slice(0, 6);
 }
 
-export function getMonthProjects(search = '', filter = 'All Projects') {
+export async function getMonthProjects(search = '', filter = 'All Projects') {
   const query = search.trim().toLowerCase();
-  return mockData.projects
+  const rawProjects = await prisma.project.findMany({ include: projectInclude });
+  return rawProjects
     .map(withComputedProject)
     .filter((project) => {
       if (query && !(project.name.toLowerCase().includes(query) || project.code.toLowerCase().includes(query))) return false;
@@ -125,21 +267,23 @@ export function getMonthProjects(search = '', filter = 'All Projects') {
     });
 }
 
-export function getPlannerInbox() {
-  return mockData.tasks.filter((task) => task.status !== 'completed').slice(0, 8);
+export async function getPlannerInbox() {
+  const tasks = await prisma.task.findMany({ where: { status: { not: 'completed' } }, take: 8 });
+  return tasks.map(toTask);
 }
 
-export function getReportsRows() {
-  return mockData.projects.map((project) => {
-    const tasks = mockData.tasks.filter((task) => task.projectId === project.id);
+export async function getReportsRows() {
+  const rawProjects = await prisma.project.findMany({ include: projectInclude });
+  return rawProjects.map((project) => {
+    const computed = withComputedProject(project);
     return {
-      ...withComputedProject(project),
-      tasks,
-      schedule: `${formatDate(project.startDate)} – ${formatDate(project.endDate)}`
+      ...computed,
+      schedule: `${formatDate(computed.startDate)} – ${formatDate(computed.endDate)}`
     };
   });
 }
 
-export function getDependencyLabel(task: Task) {
-  return mockData.dependencies.filter((dependency) => dependency.taskId === task.id).map((dependency) => dependency.type).join(', ');
+export async function getDependencyLabel(task: Task) {
+  const dependencies = await prisma.taskDependency.findMany({ where: { taskId: task.id } });
+  return dependencies.map((dependency) => dependency.type).join(', ');
 }

@@ -9,12 +9,13 @@ interface ProjectFormProps {
   mode: 'create' | 'edit';
   users: User[];
   initialValues?: Partial<Project>;
+  onSaved?: () => void;
 }
 
 const statusOptions = ['not_started', 'planning', 'in_progress', 'on_hold', 'completed', 'delayed'] as const;
 const priorityOptions = ['high', 'medium', 'low'] as const;
 
-export function ProjectForm({ mode, users, initialValues }: ProjectFormProps) {
+export function ProjectForm({ mode, users, initialValues, onSaved }: ProjectFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -61,12 +62,14 @@ export function ProjectForm({ mode, users, initialValues }: ProjectFormProps) {
     }
 
     if (mode === 'create' && data?.id) {
+      onSaved?.();
       router.push(`/projects/${data.id}`);
       router.refresh();
       return;
     }
 
     setMessage('Saved successfully');
+    onSaved?.();
     router.refresh();
   }
 

@@ -7,17 +7,22 @@ import { STATUS_COLORS } from '@/lib/date';
 
 const filters = ['All Projects', 'My Projects', 'Active', 'Completed', 'Delayed', 'High Priority', 'Medium Priority', 'Low Priority'] as const;
 
-export default function CalendarPage({ searchParams }: { searchParams?: { month?: string; filter?: string; search?: string } }) {
-  const activeMonth = searchParams?.month ? new Date(searchParams.month) : new Date();
+export default async function CalendarPage({ searchParams }: { searchParams?: Promise<{ month?: string; filter?: string; search?: string }> }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const activeMonth = resolvedSearchParams.month ? new Date(resolvedSearchParams.month) : new Date();
   const month = new Date(activeMonth.getFullYear(), activeMonth.getMonth(), 1);
-  const filter = searchParams?.filter ?? 'All Projects';
-  const search = searchParams?.search ?? '';
-  const projects = getMonthProjects(search, filter);
+  const filter = resolvedSearchParams.filter ?? 'All Projects';
+  const search = resolvedSearchParams.search ?? '';
+  const projects = await getMonthProjects(search, filter);
   const weeks = buildCalendarWeeks(month);
 
   const monthParam = month.toISOString().slice(0, 7);
+  const todayParam = new Date().toISOString().slice(0, 7);
   const prevMonth = new Date(month.getFullYear(), month.getMonth() - 1, 1).toISOString().slice(0, 7);
   const nextMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1).toISOString().slice(0, 7);
+  const isCurrentMonth = monthParam === todayParam;
+
+  const buildHref = (targetMonth: string) => `/calendar?month=${targetMonth}&filter=${encodeURIComponent(filter)}&search=${encodeURIComponent(search)}`;
 
   return (
     <div className="space-y-6">
@@ -26,9 +31,15 @@ export default function CalendarPage({ searchParams }: { searchParams?: { month?
         subtitle="Weekly project distribution across the selected month."
         actions={
           <div className="flex items-center gap-2">
-            <Link className="btn-secondary" href={`/calendar?month=${prevMonth}&filter=${filter}&search=${search}`}>Prev</Link>
-            <div className="rounded-button border border-border bg-white px-4 py-2 text-sm font-semibold">{formatMonthLabel(month)}</div>
-            <Link className="btn-secondary" href={`/calendar?month=${nextMonth}&filter=${filter}&search=${search}`}>Next</Link>
+            <Link className="btn-secondary" href={buildHref(prevMonth)}>Prev</Link>
+            <Link
+              className={`rounded-button border px-4 py-2 text-sm font-semibold ${isCurrentMonth ? 'border-primary bg-primary text-white' : 'border-border bg-white text-ink hover:border-primary/40'}`}
+              href={buildHref(todayParam)}
+              title="Reset to current month"
+            >
+              {formatMonthLabel(month)}
+            </Link>
+            <Link className="btn-secondary" href={buildHref(nextMonth)}>Next</Link>
           </div>
         }
       />

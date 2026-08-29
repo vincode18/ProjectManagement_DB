@@ -31,6 +31,25 @@ export function weekRangeLabel(start: Date) {
   return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 }
 
+export function buildWeekColumns(rangeStart: Date, rangeEnd: Date) {
+  const weeks: { start: Date; end: Date }[] = [];
+  let cursor = startOfWeek(rangeStart);
+  const end = startOfWeek(rangeEnd);
+  while (cursor <= end) {
+    weeks.push({ start: new Date(cursor), end: addDays(cursor, 6) });
+    cursor = addDays(cursor, 7);
+  }
+  return weeks;
+}
+
+export function barOffsetPx(weeksStart: Date, target: Date, weekWidth: number) {
+  return (diffDays(weeksStart, target) / 7) * weekWidth;
+}
+
+export function barWidthPx(start: Date, end: Date, weekWidth: number) {
+  return Math.max(8, ((diffDays(start, end) + 1) / 7) * weekWidth);
+}
+
 export function workingTimer(startDate: string, status: string) {
   if (status === 'completed') return 'Completed';
   const start = new Date(startDate);

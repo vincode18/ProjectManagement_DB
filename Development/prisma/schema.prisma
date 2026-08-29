@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ProjectStatus {
+  not_started
+  planning
+  in_progress
+  on_hold
+  completed
+  delayed
+}
+
+enum PriorityLevel {
+  high
+  medium
+  low
+}
+
+enum DependencyType {
+  FS
+  SS
+  FF
+  SF
+}
+
+model User {
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+  role  String
+
+  managedProjects  Project[] @relation("ProjectManager")
+  ownedProjects    Project[] @relation("ProjectOwner")
+  ledProjects      Project[] @relation("ProjectTechLead")
+  assignedTasks    Task[]    @relation("TaskAssignee")
+  plannerSlots     PlannerSlot[]
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  name          String
+  description   String?
+  managerId     String
+  ownerId       String
+  techLeadId    String?
+  startDate     DateTime
+  endDate       DateTime
+  actualEndDate DateTime?
+  status        ProjectStatus
+  priority      PriorityLevel
+  progress      Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  manager  User  @relation("ProjectManager", fields: [managerId], references: [id])
+  owner    User  @relation("ProjectOwner", fields: [ownerId], references: [id])
+  techLead User? @relation("ProjectTechLead", fields: [techLeadId], references: [id])
+  tasks    Task[]
+}
+
+model Task {
+  id           String        @id @default(cuid())
+  projectId    String
+  parentTaskId String?
+  wbsCode      String
+  name         String
+  assigneeId   String?
+  startDate    DateTime
+  endDate      DateTime
+  progress     Int           @default(0)
+  status       ProjectStatus
+  priority     PriorityLevel
+  isMilestone  Boolean       @default(false)
+  remarks      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  project           Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentTask        Task?            @relation("TaskParent", fields: [parentTaskId], references: [id])
+  subTasks          Task[]           @relation("TaskParent")
+  assignee          User?            @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  dependencies      TaskDependency[] @relation("TaskDependencies")
+  dependents        TaskDependency[] @relation("DependsOnTask")
+  plannerSlots      PlannerSlot[]
+}
+
+model TaskDependency {
+  taskId          String
+  dependsOnTaskId String
+  type            DependencyType
+
+  task          Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTask Task @relation("DependsOnTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnTaskId])
+}
+
+model KanbanColumnConfig {
+  id     String        @id @default(cuid())
+  status ProjectStatus @unique
+  label  String
+}
+
+model PlannerSlot {
+  id     String   @id @default(cuid())
+  userId String
+  taskId String
+  date   DateTime
+  hour   Int
+
+  user User @relation(fields: [userId], references: [id])
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}

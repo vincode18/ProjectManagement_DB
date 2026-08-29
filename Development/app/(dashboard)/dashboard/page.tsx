@@ -9,8 +9,8 @@ import { formatShortDate } from '@/lib/date';
 import { healthEmoji, healthBadgeColor } from '@/lib/health';
 import { StatusPill } from '@/components/status-pill';
 
-export default function DashboardPage() {
-  const data = getDashboardSummary();
+export default async function DashboardPage() {
+  const data = await getDashboardSummary();
   const today = new Date();
 
   return (
@@ -21,7 +21,7 @@ export default function DashboardPage() {
         actions={<RefreshButton />}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-5 xl:grid-cols-6">
         <SummaryCard label="Total Projects" value={data.totalProjects} />
         <SummaryCard label="Active Projects" value={data.activeProjects} />
         <SummaryCard label="Completed" value={data.completed} />
@@ -38,9 +38,9 @@ export default function DashboardPage() {
               <h2 className="section-title mt-1">All project statuses</h2>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <CardContent className="grid gap-3 p-5 md:grid-cols-2 md:gap-5 xl:grid-cols-3">
             {data.statusCounts.map((item) => (
-              <div key={item.status} className="flex items-center justify-between rounded-xl border border-border px-4 py-3">
+              <div key={item.status} className="flex items-center justify-between rounded-xl border border-border px-5 py-4">
                 <div>
                   <p className="text-sm font-semibold text-ink">{item.label.replaceAll('_', ' ')}</p>
                   <p className="text-xs text-muted">Status count</p>
@@ -58,9 +58,9 @@ export default function DashboardPage() {
               <h2 className="section-title mt-1">Next checkpoints</h2>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 p-5">
             {data.upcomingMilestones.map((task) => (
-              <Link key={task.id} href={`/projects/${task.projectId}`} className="block rounded-xl border border-border p-3 transition hover:border-primary/40 hover:bg-slate-50">
+              <Link key={task.id} href={`/projects/${task.projectId}`} className="block rounded-xl border border-border p-4 transition hover:border-primary/40 hover:bg-slate-50">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-ink">{task.name}</p>
@@ -81,9 +81,9 @@ export default function DashboardPage() {
             <h2 className="section-title mt-1">Project health snapshot</h2>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <CardContent className="grid gap-3 p-5 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
           {data.riskProjects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.id}`} className="rounded-2xl border border-border p-4 transition hover:border-primary/40 hover:shadow-sm">
+            <Link key={project.id} href={`/projects/${project.id}`} className="rounded-2xl border border-border p-5 transition hover:border-primary/40 hover:shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="label">{project.code}</p>

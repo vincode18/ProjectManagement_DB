@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const status = searchParams.get('status') ?? undefined;
   const priority = searchParams.get('priority') ?? undefined;
   const search = searchParams.get('search') ?? undefined;
-  return NextResponse.json(getProjectsFiltered({ status, priority, search }));
+  return NextResponse.json(await getProjectsFiltered({ status, priority, search }));
 }
 
 export async function POST(request: Request) {
@@ -19,6 +19,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid project payload' }, { status: 400 });
   }
 
-  const project = createProject(parsed.data);
+  const project = await createProject(parsed.data);
   return NextResponse.json(project, { status: 201 });
 }
