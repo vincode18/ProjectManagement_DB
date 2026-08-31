@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui';
+import { MarketingFooter } from '@/components/marketing-footer';
 
 export default function HomePage() {
   return (
@@ -14,7 +15,7 @@ export default function HomePage() {
           Get Started
         </Button>
       </Link>
-      <p className="mt-10 text-xs font-medium uppercase tracking-[0.2em] text-white/40">by ViandraLabs</p>
+      <MarketingFooter />
     </div>
   );
 }
