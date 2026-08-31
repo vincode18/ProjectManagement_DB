@@ -41,12 +41,14 @@ This document extends `enhancement-01.md` with a second round of UI/UX fixes req
 
 **Problem:** the current `TaskForm` (`components/task-form.tsx`) exposes many fields with terse or database-style labels: WBS code, assignee, parent task, start/end date, status, priority, a manual `0–100` progress number, a milestone checkbox, a dependency task + dependency type (`FS`/`SS`/`FF`/`SF`), and free-text remarks. This is more than a task-creation popup needs, and none of it currently expresses "how big" a task is.
 
+> **Minor edit:** the dependency **type** selector (`FS`/`SS`/`FF`/`SF`) is not needed — keep only the dependency task picker itself.
+
 **Fix — target field set (simple, self-explanatory labels):**
 
 | Field | Label | Notes |
 |---|---|---|
 | `name` | **Task Name** | existing field, unchanged |
-| dependency | **Dependency** | keep the existing "depends on task" picker (currently `dependsOnTaskId` + `dependencyType`), but present it as a single **Dependency** field |
+| dependency | **Dependency** | keep only the existing "depends on task" picker (`dependsOnTaskId`) as a single **Dependency** field — drop the dependency type (`FS`/`SS`/`FF`/`SF`) selector, it isn't needed |
 | `startDate` | **Start** | existing field, unchanged |
 | `endDate` | **End** | existing field, unchanged |
 | `remarks` | **Description** | rename the existing free-text field from "Remarks" to "Description" |
