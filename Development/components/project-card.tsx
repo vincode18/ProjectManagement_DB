@@ -8,7 +8,7 @@ export function ProjectCard({ project }: { project: Project & { health?: 'On Tra
   return (
     <Link href={`/projects/${project.id}`}>
       <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-md">
-        <CardContent className="space-y-4 p-5">
+        <CardContent className="space-y-4 p-5 pt-7">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="label">{project.code}</p>

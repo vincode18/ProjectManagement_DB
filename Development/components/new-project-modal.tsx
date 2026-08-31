@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { Button } from './ui';
 import { Modal } from './modal';
@@ -11,7 +12,10 @@ export function NewProjectModal({ users }: { users: User[] }) {
 
   return (
     <>
-      <Button variant="secondary" onClick={() => setOpen(true)}>New Project</Button>
+      <Button variant="primary" onClick={() => setOpen(true)}>
+        <Plus className="h-4 w-4" />
+        New Project
+      </Button>
       <Modal open={open} onClose={() => setOpen(false)} title="Create Project">
         <ProjectForm mode="create" users={users} onSaved={() => setOpen(false)} />
       </Modal>
