@@ -9,6 +9,7 @@ Fixes and additions for the "Create Project" / "Edit Project" popup (`components
 | 1 | The **Progress** field renders as a native number input with up/down spinner arrows, always starting at a visible `0` | Remove the spinner control from the create form |
 | 2 | None of the fields have a `name` attribute, and most have no placeholder text (the dropdowns and date pickers show nothing until a value is picked) | Add a `name` to every field, and a placeholder to every field |
 | 3 | There is no way to attach an external ITIS reference to a project | Add **ITIS Number** and **ITIS Link** fields to the form, and a button on the project card that opens the ITIS Link |
+| 4 | Task **Progress** on the "Project Tasks" table is a `type="range"` slider — completion isn't tied to a task actually being marked done | Replace it with a checkbox: checked = task is 100% complete, and this feeds the project's completed/total task percentage |
 
 ---
 
@@ -112,3 +113,26 @@ Both are plain text inputs (`type="text"` / `type="url"` for the link), placed a
 - `target="_blank"` + `rel="noopener noreferrer"` opens the ITIS record in a new tab without exposing `window.opener` to the external site.
 - Hide the button entirely when `itisLink` is empty, rather than showing a disabled button.
 - Same button can be reused on the project detail page (`components/project-detail-client.tsx`) next to the other project actions, showing `itisNumber` as its label/tooltip if present (e.g. `View ITIS · <itisNumber>`).
+
+---
+
+## 4. Task Progress as a Checkbox, Feeding the Project's Task-Count Percentage
+
+**Problem:** on the "Project Tasks" table in `components/project-detail-client.tsx` (the `Progress` column, rendering `TaskProgressSlider` from `components/task-progress-slider.tsx` — see line 164), progress is a `type="range"` slider going from 0–100. This lets a task sit at an arbitrary value like `75%` indefinitely, with no clear "done" signal, and doesn't map cleanly onto counting how many tasks in a project are actually finished.
+
+**Fix:**
+- Replace the slider with a plain **checkbox**: unchecked = task not done, checked = task is complete.
+- Checking the box sets the task's `progress` to `100` and `status` to `completed`; unchecking it resets `progress` to `0` and `status` to `not_started`.
+- This checkbox is the actual mechanism that drives the project-level "completed ÷ total tasks" percentage (already specced in `PRD/Enhancement/enhancement-02.md` #4) — checking a task's box increments the project's completed-task count and immediately updates its `X/Y · Z%` readout on the project card.
+- Rename `TaskProgressSlider` to something like `TaskCompletionCheckbox`. It keeps the same shape as today — still `PATCH`-ing `/api/tasks/:id` and calling `router.refresh()` — just with a checkbox input instead of a range input:
+
+```tsx
+<input
+  type="checkbox"
+  name={`task-${taskId}-completed`}
+  checked={progress === 100}
+  onChange={(event) => update(event.target.checked)}
+/>
+```
+
+- The `Progress` column header can stay as-is, or be relabeled `Done` to match the new control.
