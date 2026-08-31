@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, KanbanSquare, LineChart, Table2, FolderKanban, ClipboardList } from 'lucide-react';
+import { CalendarDays, KanbanSquare, LineChart, Table2, FolderKanban, ClipboardList } from 'lucide-react';
 import { cn } from './utils';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Dashboard', icon: null },
   { href: '/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/projects', label: 'Projects', icon: FolderKanban },
   { href: '/gantt', label: 'Gantt', icon: LineChart },
@@ -22,7 +22,7 @@ export function SideNav() {
     <aside className="flex min-h-screen w-64 flex-col bg-sidebar px-4 py-6 text-white">
       <div className="mb-8 px-2">
         <p className="text-[12px] font-semibold uppercase tracking-[0.3em] text-white/60">Internal App</p>
-        <h1 className="mt-2 text-xl font-bold leading-tight">Project Management Dashboard</h1>
+        <h1 className="mt-2 text-xl font-bold leading-tight">Workzen</h1>
       </div>
       <nav className="space-y-1">
         {navItems.map((item) => {
@@ -37,7 +37,7 @@ export function SideNav() {
                 active ? 'bg-white/12 text-white' : 'text-white/70 hover:bg-white/8 hover:text-white'
               )}
             >
-              <Icon className="h-4 w-4" />
+              {Icon ? <Icon className="h-4 w-4" /> : null}
               {item.label}
             </Link>
           );

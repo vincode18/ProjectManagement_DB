@@ -12,7 +12,7 @@ export async function GET() {
   const [rows, tasks] = await Promise.all([getReportsRows(), getAllTasksRaw()]);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Project Management Dashboard';
+  workbook.creator = 'Workzen';
   workbook.created = new Date();
 
   const summarySheet = workbook.addWorksheet('Summary');
